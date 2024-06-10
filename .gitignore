@@ -1,3 +1,5 @@
 gopath
 .envrc
 bin
+/.idea/
+
