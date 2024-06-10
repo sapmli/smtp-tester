@@ -41,6 +41,7 @@ type config struct {
 	SMTPHost   string
 	Username   string
 	Password   string
+	AuthMech   string
 	Subject    string
 	From       *mail.Address
 	HeaderFrom *mail.Address
@@ -371,6 +372,7 @@ func main() {
 	flag.StringVar(&cfg.SMTPHost, "smtp-host", "", "SMTP server address")
 	flag.StringVar(&cfg.Username, "username", "", "SMTP server username")
 	flag.StringVar(&cfg.Password, "password", "", "SMTP server password")
+	flag.StringVar(&cfg.AuthMech, "auth-mech", "PLAIN", "SMTP authentication mechanism (PLAIN, LOGIN)")
 	flag.StringVar(&cfg.Subject, "subject", "hello", "Email subject")
 	flag.StringVar(&from, "from", "", "Envelope from sender address")
 	flag.StringVar(&headerFrom, "header-from", "", "Header from sender address, if empty defaults to --from")
@@ -403,6 +405,11 @@ func main() {
 		log.Fatalf("Multiple threads with reusing SMTP connection is not supported")
 	}
 
+	cfg.AuthMech = strings.ToUpper(cfg.AuthMech)
+	if cfg.AuthMech != "PLAIN" && cfg.AuthMech != "LOGIN" {
+		log.Fatalf("Invalid --auth-mech argument: %s. Use either PLAIN (default) or LOGIN.", cfg.AuthMech)
+	}
+
 	// Sender and recipient
 	var err error
 	cfg.From, err = mail.ParseAddress(from)
@@ -424,7 +431,15 @@ func main() {
 
 	// other parameters
 	cfg.Timeout = time.Second * time.Duration(timeout)
-	cfg.Auth = sasl.NewPlainClient("", cfg.Username, cfg.Password)
+
+	// authentication
+	if cfg.AuthMech == "LOGIN" {
+		cfg.Auth = sasl.NewLoginClient(cfg.Username, cfg.Password)
+	} else {
+		cfg.Auth = sasl.NewPlainClient("", cfg.Username, cfg.Password)
+	}
+
+	// compose message
 	cfg.Msg = "To: " + cfg.To.Address + "\r\n" +
 		"From: " + cfg.HeaderFrom.String() + "\r\n" +
 		"Subject: " + cfg.Subject + "\r\n" +
