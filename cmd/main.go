@@ -45,7 +45,6 @@ type config struct {
 	From       *mail.Address
 	HeaderFrom *mail.Address
 	To         *mail.Address
-	ShowErr    bool
 	StartTLS   bool
 	Threads    uint
 	Timeout    time.Duration
@@ -65,7 +64,7 @@ func (cfg *config) trackErr(stage string, err error, limiter chan struct{}) {
 		os.Exit(1)
 	}
 
-	if !cfg.ShowErr {
+	if !cfg.Debug {
 		<-limiter
 		return
 	}
@@ -379,8 +378,7 @@ func main() {
 	flag.UintVar(&timeout, "timeout", 3, "Timeout in seconds")
 	flag.UintVar(&cfg.Size, "size", 30720, "Message size in bytes")
 	flag.Uint64Var(&cfg.MaxMails, "max-mails", 0, "Limit the amount of emails, 0 means no limit")
-	flag.BoolVar(&cfg.Debug, "debug", false, "show debug logs")
-	flag.BoolVar(&cfg.ShowErr, "show-error", false, "show error type on auth failure")
+	flag.BoolVar(&cfg.Debug, "debug", false, "show debug logs and errors")
 	flag.BoolVar(&cfg.StartTLS, "starttls", true, "whether to require StartTLS")
 	flag.BoolVar(&cfg.ReuseSMTP, "reuse-smtp", false, "Reuse SMTP connection")
 	flag.Parse()
@@ -454,7 +452,7 @@ func main() {
 	signal.Notify(exit, os.Interrupt, syscall.SIGTERM)
 
 	// stats monitor
-	go monitor(cfg.ShowErr)
+	go monitor(cfg.Debug)
 
 	// main loop
 	var count uint64
