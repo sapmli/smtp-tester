@@ -51,6 +51,7 @@ type config struct {
 	Timeout    time.Duration
 	Size       uint
 	MaxMails   uint64
+	SkipVerify bool
 	ReuseSMTP  bool
 	Msg        string
 	Auth       sasl.Client
@@ -353,6 +354,12 @@ func initConn(cfg *config) (net.Conn, *tls.Config, error) {
 			},
 			Config: tlsConfig,
 		}
+
+		if cfg.SkipVerify {
+			// do not verify the certificate
+			tlsDialer.Config.InsecureSkipVerify = true
+		}
+
 		conn, err := tlsDialer.Dial("tcp", cfg.SMTPHost)
 		return conn, tlsConfig, err
 	}
@@ -383,6 +390,7 @@ func main() {
 	flag.BoolVar(&cfg.ShowErr, "show-error", false, "show error type on auth failure")
 	flag.BoolVar(&cfg.StartTLS, "starttls", true, "whether to require StartTLS")
 	flag.BoolVar(&cfg.ReuseSMTP, "reuse-smtp", false, "Reuse SMTP connection")
+	flag.BoolVar(&cfg.SkipVerify, "skip-verify", false, "Do not verify TLS certificates")
 	flag.Parse()
 
 	// SMTP credentials
