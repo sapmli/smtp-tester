@@ -44,6 +44,7 @@ type config struct {
 	Subject    string
 	From       *mail.Address
 	HeaderFrom *mail.Address
+	Headers    Headers
 	To         *mail.Address
 	ShowErr    bool
 	StartTLS   bool
@@ -56,6 +57,17 @@ type config struct {
 	Auth       sasl.Client
 	WG         sync.WaitGroup
 	Client     *smtp.Client
+}
+
+type Headers []string
+
+func (h *Headers) String() string {
+	return strings.Join(*h, ",")
+}
+
+func (h *Headers) Set(value string) error {
+	*h = append(*h, value)
+	return nil
 }
 
 func (cfg *config) trackErr(stage string, err error, limiter chan struct{}) {
@@ -383,6 +395,7 @@ func main() {
 	flag.BoolVar(&cfg.ShowErr, "show-error", false, "show error type on auth failure")
 	flag.BoolVar(&cfg.StartTLS, "starttls", true, "whether to require StartTLS")
 	flag.BoolVar(&cfg.ReuseSMTP, "reuse-smtp", false, "Reuse SMTP connection")
+	flag.Var(&cfg.Headers, "header", "Additional headers")
 	flag.Parse()
 
 	// SMTP credentials
@@ -428,6 +441,7 @@ func main() {
 	cfg.Msg = "To: " + cfg.To.Address + "\r\n" +
 		"From: " + cfg.HeaderFrom.String() + "\r\n" +
 		"Subject: " + cfg.Subject + "\r\n" +
+		strings.Join(cfg.Headers, "\r\n") + "\r\n" +
 		"\r\n" +
 		randStringBytes(cfg.Size) +
 		"\r\n"
